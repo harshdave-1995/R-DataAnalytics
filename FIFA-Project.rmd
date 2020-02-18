@@ -1,0 +1,215 @@
+---
+title: "Final Project"
+author: "Harsh Dave"
+date: "2/9/2020"
+output: html_document
+---
+### Imported the file and cleansed the data. We also replaced categorical variables by indicator values
+
+```{r setup, include=FALSE}
+setwd("C:/Users/harsh/Desktop/DAM/Final-Project")
+fifa <- read.csv("FIFA20playersratings_Final.csv")
+fifa$team_position = factor(fifa$team_position)
+fifa$preferred_foot = factor(fifa$preferred_foot)
+isLeftFootPreferred = as.integer(fifa$preferred_foot == "Left")
+fifa = cbind(fifa, isLeftFootPreferred)
+fifa = within(fifa, rm(preferred_foot))
+
+library(psych)
+pairs.panels(fifa[1:6],hist.col="blue",gap=0)
+pairs.panels(fifa[c(1,7:12)],hist.col="green",gap=0)
+pairs.panels(fifa[c(1,13:18)],hist.col="red",gap=0)
+
+```
+
+### Outlier Analysis
+
+```{r}
+
+par(mfrow=c(1,4))
+boxplot(fifa$age,main="Age")
+boxplot(fifa$height_cm,main="Height")
+boxplot(fifa$weight_kg,main="Weight")
+boxplot(fifa$pace,main="Pace")
+boxplot(fifa$shooting,main="Shooting")
+boxplot(fifa$passing,main="Passing")
+boxplot(fifa$dribbling,main="Dribbling")
+boxplot(fifa$defending,main="Defending")
+boxplot(fifa$physic,main="Physic")
+boxplot(fifa$gk_diving,main="GK Diving")
+boxplot(fifa$gk_handling,main="GK Handling")
+boxplot(fifa$gk_kicking,main="GK Kicking")
+boxplot(fifa$gk_reflexes,main="GK Reflexes")
+boxplot(fifa$gk_speed,main="GK Speed")
+boxplot(fifa$gk_positioning,main="GK Positioning")
+
+#removing the outliers
+
+paceOut = boxplot(fifa$pace)$out
+fifa[which(fifa$pace %in% paceOut),]
+fifa = fifa[-which(fifa$pace %in% paceOut),]
+
+shootOut = boxplot(fifa$shooting)$out
+fifa[which(fifa$shooting %in% shootOut),]
+fifa = fifa[-which(fifa$shooting %in% shootOut),]
+
+passOut = boxplot(fifa$passing)$out
+fifa[which(fifa$passing %in% passOut),]
+fifa = fifa[-which(fifa$passing %in% passOut),]
+
+dribOut = boxplot(fifa$dribbling)$out
+fifa[which(fifa$dribbling %in% dribOut),]
+fifa = fifa[-which(fifa$dribbling %in% dribOut),]
+
+physOut = boxplot(fifa$physic)$out
+fifa[which(fifa$physic %in% physOut),]
+fifa = fifa[-which(fifa$physic %in% physOut),]
+
+gkHandOut = boxplot(fifa$gk_handling)$out
+fifa[which(fifa$gk_handling %in% gkHandOut),]
+fifa = fifa[-which(fifa$gk_handling %in% gkHandOut),]
+
+gkKickOut = boxplot(fifa$gk_kicking)$out
+fifa[which(fifa$gk_kicking %in% gkKickOut),]
+fifa = fifa[-which(fifa$gk_kicking %in% gkKickOut),]
+
+```
+
+### Splitting the data into seperate starta of Goal Keepers vs Other Players
+
+```{r}
+fifa_gk = fifa[which(fifa$team_position=="GK"),]
+fifa_forward = fifa[which(fifa$team_position=="Forward"),]
+fifa_midfielder = fifa[which(fifa$team_position=="Midfielder"),]
+fifa_defender = fifa[which(fifa$team_position=="Defender"),]
+
+fifa_gk = fifa_gk[c(-5,-7,-8,-9,-10,-11,-12)]
+  
+fifa_forward = fifa_forward[c(-5,-13,-14,-15,-16,-17,-18)]
+fifa_midfielder = fifa_midfielder[c(-5,-13,-14,-15,-16,-17,-18)]
+fifa_defender = fifa_defender[c(-5,-13,-14,-15,-16,-17,-18)]
+
+```
+
+### Estimation of Linear model for response
+
+```{r}
+
+model_gk = lm(overall ~ age+weight_kg+gk_diving+gk_handling+gk_kicking+gk_reflexes+gk_speed+gk_positioning, data  = fifa_gk)
+summary(model_gk)
+
+model_forward = lm(overall ~ age+weight_kg+pace+shooting+passing+dribbling+physic+skill_moves, data=fifa_forward)
+summary(model_forward)
+
+model_midfielder = lm(overall ~ age+weight_kg+pace+passing+dribbling+defending+physic+skill_moves, data=fifa_midfielder)
+summary(model_midfielder)
+
+model_defender = lm(overall ~ age+weight_kg+pace+dribbling+defending+physic+skill_moves, data=fifa_defender)
+summary(model_defender)
+
+```
+
+### Model Adequacy Checks by residual analysis
+
+```{r}
+par(mfrow=c(1,2))
+# generate QQ plot
+qqnorm(model_gk$residuals,main="Model for goalkeeper")
+qqline(model_gk$residuals)
+# generate Scatter Plot
+plot(model_gk$fitted.values,model_gk$residuals,pch=20)
+
+par(mfrow=c(1,2))
+# generate QQ plot
+qqnorm(model_forward$residuals,main="Model for Forward")
+qqline(model_forward$residuals)
+# generate Scatter Plot
+plot(model_forward$fitted.values,model_forward$residuals,pch=20)
+
+par(mfrow=c(1,2))
+# generate QQ plot
+qqnorm(model_midfielder$residuals,main="Model for Midfielder")
+qqline(model_midfielder$residuals)
+# generate Scatter Plot
+plot(model_midfielder$fitted.values,model_midfielder$residuals,pch=20)
+
+par(mfrow=c(1,2))
+# generate QQ plot
+qqnorm(model_defender$residuals,main="Model for Defender")
+qqline(model_defender$residuals)
+# generate Scatter Plot
+plot(model_defender$fitted.values,model_defender$residuals,pch=20)
+
+
+```
+
+### K Fold Cross Validation 
+
+```{r}
+# for the goal keeper model, we will perform a 5 fold cross validation
+n = dim(fifa_gk)[1]
+library(DAAG)
+KCV_gk = cv.lm(data=fifa_gk, model_gk, m=5, seed=123)
+sum((fifa_gk$overall-KCV_gk$cvpred)^2)
+1-sum((fifa_gk$overall-KCV_gk$cvpred)^2)/sum((fifa_gk$overall-mean(fifa_gk$overall))^2)
+summary(model_gk)$r.squared
+
+# for the forward player model, we will perform a 5 fold cross validation
+n = dim(fifa_forward)[1]
+library(DAAG)
+KCV_forward = cv.lm(data=fifa_forward, model_forward, m=5, seed=123)
+sum((fifa_forward$overall-KCV_forward$cvpred)^2)
+1-sum((fifa_forward$overall-KCV_forward$cvpred)^2)/sum((fifa_forward$overall-mean(fifa_forward$overall))^2)
+summary(model_forward)$r.squared
+
+# for the midfielder player model, we will perform a 5 fold cross validation
+n = dim(fifa_midfielder)[1]
+library(DAAG)
+KCV_midfielder = cv.lm(data=fifa_midfielder, model_midfielder, m=5, seed=123)
+sum((fifa_midfielder$overall-KCV_midfielder$cvpred)^2)
+1-sum((fifa_midfielder$overall-KCV_midfielder$cvpred)^2)/sum((fifa_midfielder$overall-mean(fifa_midfielder$overall))^2)
+summary(model_midfielder)$r.squared
+
+# for the defender player model, we will perform a 5 fold cross validation
+n = dim(fifa_defender)[1]
+library(DAAG)
+KCV_defender = cv.lm(data=fifa_defender, model_defender, m=5, seed=123)
+sum((fifa_defender$overall-KCV_defender$cvpred)^2)
+1-sum((fifa_defender$overall-KCV_defender$cvpred)^2)/sum((fifa_defender$overall-mean(fifa_defender$overall))^2)
+summary(model_defender)$r.squared
+```
+```{r}
+### Prediction for Goal Keeper
+
+newfifagk1 <- data.frame(age=26,weight_kg=87,gk_diving=87,gk_handling=92,gk_kicking=78,gk_reflexes=89,gk_speed=52,gk_positioning=90)
+predict(model_gk, newdata=newfifagk1)
+
+newfifagk2 <- data.frame(age=26,weight_kg=91,gk_diving=85,gk_handling=84,gk_kicking=85,gk_reflexes=89,gk_speed=51,gk_positioning=90)
+predict(model_gk, newdata=newfifagk2)
+
+### Prediction for Forward
+
+newfifaforward1 <- data.frame(age=32,weight_kg=72,pace=87,shooting=92,passing=92,dribbling=96,physic=66,skill_moves=4)
+predict(model_forward, newdata=newfifaforward1)
+
+newfifaforward2 <- data.frame(age=33,weight_kg=77,pace=70,shooting=82,passing=66,dribbling=75,physic=74,skill_moves=4)
+predict(model_forward, newdata=newfifaforward2)
+
+### Prediction for MF
+
+newfifaMF1 <- data.frame(age=27,weight_kg=82,pace=59,passing=66,dribbling=75,defending=40,physic=63,skill_moves=3)
+predict(model_midfielder, newdata=newfifaMF1)
+
+newfifaMF2 <- data.frame(age=27,weight_kg=68,pace=91,passing=87,dribbling=95,defending=32,physic=58,skill_moves=5)
+predict(model_midfielder, newdata=newfifaMF2)
+
+### Prediction for defender
+
+newfifadefender1 <- data.frame(age=27,weight_kg=92,pace=77,passing=70,dribbling=71,defending=90,physic=86,skill_moves=2)
+predict(model_midfielder, newdata=newfifadefender1)
+
+newfifadefender2 <- data.frame(age=30,weight_kg=80,pace=79,passing=75,dribbling=70,defending=85,physic=79,skill_moves=2)
+predict(model_midfielder, newdata=newfifadefender2)
+
+```
+
