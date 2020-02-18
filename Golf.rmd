@@ -1,0 +1,248 @@
+---
+title: "Golf Project"
+author: "Harsh Dave"
+date: "2/17/2020"
+output: html_document
+---
+
+### 1. Data set `PGA.csv` contains statistics of performance and winnings for 196 PGA tour participants during 2004 season [https://www.pgatour.com/].  Here is the list of variable: Name, Age, Average Drive (Yards), Driving accuracy (percent), Greens on regulation (%), Average # of putts, Save Percent, Money Rank, # Events, Total Winnings (\$), Average winnings (\$).  Please read PGA data (PGA.csv) into R.
+
+```{r}
+setwd("C:/Users/harsh/Documents")
+pga <- read.csv("PGA.csv")
+```
+
+### 2. Visualize the data **concisely** using scatter plots and histograms.  For example, you can use R functions such as `pairs()`, `hist()`, and `pairs.panels()` in the R package `psych`. Briefly describe the visualization results, e.g., outliers, skewness, strong correlations, clusters, and so on.
+
+```{r}
+library("psych")
+multi.hist(pga[2:11])
+par(mfrow=c(2,2))
+boxplot(pga[2],main="Age")
+boxplot(pga[3],main="AverageDrive")
+boxplot(pga[4],main="DrivingAccuracy")
+boxplot(pga[5],main="GreensonRegulation")
+boxplot(pga[6],xlab="AverageNumofPutts")
+boxplot(pga[7],xlab="SavePercent")
+boxplot(pga[8],xlab="MoneyRank")
+boxplot(pga[9],xlab="NumEvents")
+boxplot(pga[10],xlab="TotalWinnings")
+boxplot(pga[11],xlab="AverageWinnings")
+pairs.panels(pga[2:11])
+
+```
+
+
+#### Observations for multiple histograms:
+
+1. The variables Age, AverageDrive, DrivingAccuracy, SavePercent and NumEvents are normally distributed.
+2. The variables TotalWinnings and Average Winnings are positively skewed from the mean value.
+3. Histogram analysis depicts that there maybe outliers for the variables. We will confirm this be performing Box and Whiskers plot analysis.
+
+
+#### Observations for Box and Whiskers plots:
+
+1. There are outliers in AverageDrive,Savepercent,GreensonRegulation and Total Winnings.
+
+
+#### Observations for Scatter plots:
+
+1. The varibles TotalWinnings and Average Winnings are highly correlated. This makes sense as the AverageWinnings are derived by the total winnings, hence there wil be a direct relationship between them.
+2. DrivingAccuracy decreases as the driving distance (AverageDrive) increases.
+3. Age does not have any statistical relationship that is evident with any other variable.
+
+
+### 3. Fit a multiple linear regression to the data.  Use Average winnings as the response variable and use Age, Average Drive (Yards), Driving Accuracy (percent), Greens on Regulation (%), Average # of Putts, Save Percent, and # Events as covariates.  Based on the regression results, which covariate has the largest estimated slope (in absolute value)?  Which covariates are important in terms of the association with the response variable?
+
+```{r}
+model <- lm(AverageWinnings ~ Age + AverageDrive + DrivingAccuracy + GreensonRegulation + AverageNumofPutts + SavePercent + NumEvents ,data=pga)
+summary(model)
+```
+The co-variate AverageNumofPutts has the largest absolute value of slope.
+The co-variates DrivingAccuracy, GreensonRegulation, AverageNumofPutts and NumEvents are statistically significant as they have low p-values.
+
+
+### 4. Based on the fitted regression, is AverageDrive a covariate with statistically significant nonzero slope? State your conclusion and reasons.
+
+No, AverageDrive is not a co-variate with statistically significant absolute slope. Infact, it has the smallest slope when comapred with other estimated values of slope. This observation is further supported when we investigate the t-value and p-value for AverageDrive. The p-value is very high for AverageDrive which signifies weak correlation with response variable.
+
+### 5. If you run a simple linear regression of `lm(AverageWinnings ~ AverageDrive, data=d)`, is AverageDrive a covariate with statistically significant nonzero slope in this case? State your conclusion and reasons.
+
+```{r}
+model1 <- lm(AverageWinnings ~ AverageDrive, data=pga)
+summary(model1)
+```
+
+Yes, after analysing the linear regression model above we can consider the Average drive as a significant co-variate. The only reason as to why it was insignificant in the initial regression model could be that the initial model was violating assumptions of linear regression. Model Adequacy checking needs to be done in this case to validate if all the independent variables are not correlated with each other.
+### 6. If you run a multiple linear regression similar to the one in question 3 except you remove Driving Accuracy as a covariate, is AverageDrive a significant covariate with nonzero slope in this case? Are these results consistent or contradicted with the results in questions 4 and 5?  State your conclusion and reasons.
+
+```{r}
+model2 <- lm(AverageWinnings ~ Age + AverageDrive + GreensonRegulation + AverageNumofPutts + SavePercent + NumEvents ,data=pga)
+summary(model2)
+```
+
+When compared to the initial linear regression in question 3 (model), the AverageDrive in this model has become significant. Multiple regression assumes that the independent variables are not highly correlated with each other but we can see from the intial scatter plots of AverageDrive vs Driving Accuracy that both are correlated. Hence we cannot perform a multiple linear regression by taking independent variables in the model as predictors that are significantly inter-correlated.
+
+### 7. Based on regression results, is the fitted regression model in question 3 a significant model (at least one nonzero slope)?  What about the fitted regression models in question 5 and 6? State your conclusion and reasons.
+
+```{r}
+summary(model)
+```
+
+#### Model in question 3
+
+Since most of the independent predictors are statistically significant in the initial regression model. We can say that the model does depict that AverageWinnings are dependent on co-variates DrivingAccuracy, GreensonRegulation, AverageNumofPutts and NumEvents.
+We accept the Null Hypothesis only in case of Age and AverageDrive, means that we can remove these from the initial model.
+
+#### Model in question 5
+
+We can see that inter-correlated variables can impact the significane of coefficients in the regression results. This model although having high statistical significance on its own doesnt depict the **complete picture** since it has ignored the effect of other co-variates. We can assume that the model in question 3 is significant as DrivingAccuracy (dependent on AverageDrive) has been significant in predicting AverageWinnings.
+
+#### Model in question 6
+
+The model depicts that AverageWinnings are dependent on co-variates AverageDrive, GreensonRegulation, AverageNumofPutts and NumEvents. Hence, this is also a statistically significant.
+### 8.1 Using the fitted regression in question 3, obtain the prediction of the response variable for a new player with Age = 35, AverageDrive = 287, DrivingAccuracy = 64, GreensonRegulation = 64.9, AverageNumofPutts = 1.778, SavePercent = 48, NumEvents = 26.  Provide a prediction interval and explain what it means.
+
+```{r}
+newpoints=data.frame(Age=c(35), AverageDrive=c(287), DrivingAccuracy=c(64), GreensonRegulation=c(64.9),AverageNumofPutts=c(1.778), SavePercent=c(48), NumEvents=c(26))
+predict(model,newdata=newpoints,interval="prediction", level=0.95,type="response")
+```
+The predicted Average winnings is $46,720. This prediction interval of -32536.56 to 128678.1 shows that the future predicted values will fall into this interval 95% of the time.
+### 8.2 Similarly, make another prediction for the case of Age = 42, AverageDrive = 295, DrivingAccuracy = 69, GreensonRegulation = 67.7, AverageNumofPutts = 1.80, SavePercent = 54, NumEvents = 30.  
+
+```{r}
+newpoints=data.frame(Age=c(42),AverageDrive=c(295),DrivingAccuracy=(69),GreensonRegulation=c(67.7),AverageNumofPutts=c(1.80),SavePercent=c(54),NumEvents=c(30))
+predict(model,newdata=newpoints,interval="prediction", level=0.95, type="response")
+```
+### 8.3 Make a third prediction for the case of Age = 45, AverageDrive = 320, DrivingAccuracy = 70, GreensonRegulation = 67.7, AverageNumofPutts = 1.80, SavePercent = 54, NumEvents = 30.
+
+```{r}
+newpoints=data.frame(Age=c(45),AverageDrive=c(320),DrivingAccuracy=(70),GreensonRegulation=c(67.7),AverageNumofPutts=c(1.80),SavePercent=c(54),NumEvents=c(30))
+predict(model,newdata=newpoints,interval="prediction", level=0.95, type="response")
+```
+
+### 9. Compare the predictions from previous questions, what do you observe?  For example, which prediction interval is wider? which prediction dosen't make sense?  Among these predictions, which one is extrapolation?  State your conclusion and reasons.
+
+Prediction interval 1 is the narrowest amongst the three. This is the model's prediction of response based on the new values of co-variates supplied.
+Prediction interval 2 is sligtly wider than the interval 1. This maybe be because of influential points (residuals and leverages) present in the model's co-variates.
+Prediction interval 3 is the widest interval of the three.
+```{r}
+DrivingAccuracyLimit<-c(min(pga$DrivingAccuracy),max(pga$DrivingAccuracy))
+AverageDriveLimit<- c(min(pga$AverageDrive),max(pga$AverageDrive))
+AverageDriveLimit
+DrivingAccuracyLimit
+```
+After calculating the limits of co-variates it has been observed that the AverageDrive in third model is out of range of observed values, hence the third prediction is not statistically reliable (an extrapolation).
+
+#### Leverage Analysis of model
+
+```{r}
+pga_with_leverages_col=cbind(pga, leverage=hatvalues(model))
+max(pga_with_leverages_col$leverage)
+```
+
+#### Leverage Analysis of the three set of prediction co-ordinates
+
+```{r}
+X=model.matrix(model)
+pga_new_1=c(1,35,287,64,64.9,1.778,48,26)
+t(pga_new_1)%*%solve(t(X)%*%X)%*%pga_new_1
+pga_new_2=c(1,42,295,69,67.7,1.80,54,30)
+t(pga_new_2)%*%solve(t(X)%*%X)%*%pga_new_2
+pga_new_3=c(1,45,320,70,67.7,1.80,54,30)
+t(pga_new_3)%*%solve(t(X)%*%X)%*%pga_new_3
+```
+From the above results it is very evident that even the maximum leverage point of the dataset is still considerably smaller than leverage obatined for third set of prediction points. Hence we can conclude with confidence that the third prediction interval has considerable extrapolation.
+### 10. Obtain the standardized regression coefficients and compare the influence of all variables. 
+
+```{r}
+pga_only_numeric <- pga[-1]
+# transform the data using unit normal scaling 
+pga_unit_normal=as.data.frame(apply(pga_only_numeric,2,function(x){(x-mean(x))/sd(x)}))
+# redo regression
+model_unit_normal <- lm(AverageWinnings ~ Age + AverageDrive + DrivingAccuracy + GreensonRegulation + AverageNumofPutts + SavePercent + NumEvents,data=pga_unit_normal)
+# obtain standardized regression coefficients
+model_unit_normal
+summary(model_unit_normal)
+```
+To identify the most influential covariate we need the standardized regression coefficients. After the scaling, all of the scaled regressors and the scaled response have sample mean equal to zero and sample variance equal to 1.
+```{r}
+summary(model) # compare with the original regression, only estimates have changed.
+```
+
+### 11. Obtain the residuals of the fitted regression.  Perform the residual analysis.  What does the residual analysis tell you?  For example, are all four assumptions satisfied?  If not, which ones are not satisfied.  Suppose you take a logarithm of the response variable and fit the regression, does that help with the residuals?
+
+```{r}
+# obtain residuals
+head(model$residuals)
+# obtain MSRes
+MSRes=summary(model1)$sigma^2
+MSRes
+# obtain standardized residuals
+standardized_res=model1$residuals/summary(model1)$sigma
+head(standardized_res)
+qqnorm(model$residuals,main="model")
+qqline(model$residuals)
+par(mfrow=c(3,2))
+plot(pga$Age,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$AverageDrive,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$DrivingAccuracy,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$GreensonRegulation,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$AverageNumofPutts,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$SavePercent,model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$NumEvents,model$residuals,pch=20)
+abline(h=0,col="yellow")
+# generate residual plot, fitted values vs residual
+plot(model$fitted.values,model$residuals,pch=20)
+abline(h=0,col="yellow")
+```
+
+#### Normality Assumption (QQ-plot of residuals)
+
+The residuals are normally distributed since the QQ-plot is an approximate 45 degree line and has a positive skew which is also evident from the histogram analysis.
+
+#### Equal Variance & Linearity Assumption (Scatter plot of residuals against fitted values or against regressors)
+
+The samples are sporadically distributed around zero with constant variance across the x-axis. This signifies that linearity and equal variance assumptions are satisfied to some extent (except for the outliers). There are many outliers that can be observed as a part of normality assumption checks.
+
+#### Independent Errors Check (Scatter plot of residuals against time order)
+
+For this data set the Chronology is not known (timestamp), hence we cannot perform this analysis for now.
+
+## Checking with logarithmic response
+
+```{r}
+pga_log_model <- lm(log(AverageWinnings) ~ Age + AverageDrive + DrivingAccuracy + GreensonRegulation + AverageNumofPutts + SavePercent + NumEvents ,data=pga)
+summary(pga_log_model)
+qqnorm(pga_log_model$residuals,main="pga_log_model")
+qqline(pga_log_model$residuals)
+par(mfrow=c(3,2))
+plot(pga$Age,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$AverageDrive,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$DrivingAccuracy,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$GreensonRegulation,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$AverageNumofPutts,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$SavePercent,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+plot(pga$NumEvents,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+# generate residual plot, fitted values vs residual
+plot(pga_log_model$fitted.values,pga_log_model$residuals,pch=20)
+abline(h=0,col="yellow")
+```
+
+### Summary of LINE assumptions:
+
+For the logarthmic response, R-squared and Adjusted R-squared are significantly higher than linear response. We can also observe from the residual analysis that plots are following the 'L,N and E' assumptions more accurately since no patterns are evident above.
+
